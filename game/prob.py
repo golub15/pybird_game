@@ -1,63 +1,107 @@
-import pygame
+from game.objects import *
+from game.utils import *
 
 
-pygame.init()
-size = width, height = 800, 600
-screen = pygame.display.set_mode(size)
-bg = pygame.image.load("data/back_ground.png")
-bg = pygame.transform.scale(bg, (width, height))
+def vector(p0, p1):
+    """Return the vector of the points
+    p0 = (xo,yo), p1 = (x1,y1)"""
+    a = p1[0] - p0[0]
+    b = p1[1] - p0[1]
+    return (a, b)
 
 
-def load_image(name, colorkey=None):
-    image = pygame.image.load(name)
-    if colorkey is not None:
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
+def unit_vector(v):
+    """Return the unit vector of the points
+    v = (a,b)"""
+    h = ((v[0] ** 2) + (v[1] ** 2)) ** 0.5
+    if h == 0:
+        h = 0.000000000000001
+    ua = v[0] / h
+    ub = v[1] / h
+    return (ua, ub)
+
+
+def sling_action():
+    """Set up sling behavior"""
+    print('sl')
+    global mouse_distance
+    global rope_lenght
+    global angle
+    global x_mouse
+    global y_mouse
+    # Fixing bird to the sling rope
+    v = vector((sling_x, sling_y), (x_mouse, y_mouse))
+    uv = unit_vector(v)
+    uv1 = uv[0]
+    uv2 = uv[1]
+    mouse_distance = distance(sling_x, sling_y, x_mouse, y_mouse)
+    pu = (uv1 * rope_lenght + sling_x, uv2 * rope_lenght + sling_y)
+    bigger_rope = 102
+    x_redbird = x_mouse - 20
+    y_redbird = y_mouse - 20
+    if mouse_distance > rope_lenght:
+        pux, puy = pu
+        pux -= 20
+        puy -= 20
+        pul = pux, puy
+        screen.blit(redbird, pul)
+        pu2 = (uv1 * bigger_rope + sling_x, uv2 * bigger_rope + sling_y)
+        pygame.draw.line(screen, (0, 0, 0), (sling2_x, sling2_y), pu2, 5)
+        screen.blit(redbird, pul)
+        pygame.draw.line(screen, (0, 0, 0), (sling_x, sling_y), pu2, 5)
     else:
-        image = image.convert_alpha()
-    return image
+        mouse_distance += 10
+        pu3 = (uv1 * mouse_distance + sling_x, uv2 * mouse_distance + sling_y)
+        pygame.draw.line(screen, (0, 0, 0), (sling2_x, sling2_y), pu3, 5)
+        screen.blit(redbird, (x_redbird, y_redbird))
+        pygame.draw.line(screen, (0, 0, 0), (sling_x, sling_y), pu3, 5)
+    # Angle of impulse
+    dy = y_mouse - sling_y
+    dx = x_mouse - sling_x
+    if dx == 0:
+        dx = 0.00000000000001
+    angle = math.atan((float(dy)) / dx)
 
 
-class Mouse:
-    def __init__(self):
-        self.mouse = pygame.sprite.Group()
-        self.sprite = pygame.sprite.Sprite()
-        self.sprite.image = pygame.image.load("data/arrow.png")
-        self.sprite.rect = self.sprite.image.get_rect()
-        self.sprite.rect.x = 0
-        self.sprite.rect.y = 0
-        pygame.mouse.set_visible(False)
-        self.mouse_is_on = True
-
-    def mouse_off(self):
-        pygame.mouse.set_visible(True)
-        self.mouse_is_on = False
-
-    def mouse_on(self):
-        pygame.mouse.set_visible(False)
-        self.mouse_is_on = True
-
-    def mouse_move(self, event):
-        pos = event.pos
-        self.sprite.rect.x = pos[0]
-        self.sprite.rect.y = pos[1]
-        self.mouse.add(self.sprite)
+def load_music():
+    s = 'data/angry-birds.ogg'
+    pygame.mixer.music.load(s)
+    pygame.mixer.music.play(-1)
 
 
-mouse = Mouse()
-running = True
-while running:
-    #screen.fill((0, 0, 0))
-    screen.blit(bg, (0, 0))
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if mouse.mouse_is_on and event.type == pygame.MOUSEMOTION and pygame.mouse.get_focused():
-            mouse.mouse_move(event)
-        elif event.type == pygame.MOUSEMOTION:
-            mouse.mouse.remove(mouse.sprite)
-    mouse.mouse.draw(screen)
+def main():
+    pygame.init()
+    size = width, height = 1200, 650
+    screen = pygame.display.set_mode(size)
+    bg = pygame.image.load("data/background3.png")
+    bg = pygame.transform.scale(bg, (width, height))
+    clock = pygame.time.Clock()
 
-    pygame.display.flip()
+    all_sprites = pygame.sprite.Group()
+
+    x = Catapult(screen, all_sprites)
+    bird = Bird(screen, all_sprites)
+    #mouse = Mouse()
+   # objects = [bird, mouse]
+    running = True
+
+    load_music()
+
+    while running:
+        screen.blit(bg, (0, 0))
+        for event in pygame.event.get():
+
+            all_sprites.update(event)
+            if event.type == pygame.QUIT:
+                running = False
+            else:
+                pass
+
+        clock.tick(60)
+        all_sprites.draw(screen)
+        all_sprites.update()
+        pygame.display.flip()
+
+
+if __name__ == '__main__':
+    main()
