@@ -1,6 +1,12 @@
 from game.objects import *
 from game.utils import *
 
+import pymunk
+import pygame
+import pymunk.pygame_util
+
+from pymunk import Vec2d
+
 
 def vector(p0, p1):
     """Return the vector of the points
@@ -21,48 +27,6 @@ def unit_vector(v):
     return (ua, ub)
 
 
-def sling_action():
-    """Set up sling behavior"""
-    print('sl')
-    global mouse_distance
-    global rope_lenght
-    global angle
-    global x_mouse
-    global y_mouse
-    # Fixing bird to the sling rope
-    v = vector((sling_x, sling_y), (x_mouse, y_mouse))
-    uv = unit_vector(v)
-    uv1 = uv[0]
-    uv2 = uv[1]
-    mouse_distance = distance(sling_x, sling_y, x_mouse, y_mouse)
-    pu = (uv1 * rope_lenght + sling_x, uv2 * rope_lenght + sling_y)
-    bigger_rope = 102
-    x_redbird = x_mouse - 20
-    y_redbird = y_mouse - 20
-    if mouse_distance > rope_lenght:
-        pux, puy = pu
-        pux -= 20
-        puy -= 20
-        pul = pux, puy
-        screen.blit(redbird, pul)
-        pu2 = (uv1 * bigger_rope + sling_x, uv2 * bigger_rope + sling_y)
-        pygame.draw.line(screen, (0, 0, 0), (sling2_x, sling2_y), pu2, 5)
-        screen.blit(redbird, pul)
-        pygame.draw.line(screen, (0, 0, 0), (sling_x, sling_y), pu2, 5)
-    else:
-        mouse_distance += 10
-        pu3 = (uv1 * mouse_distance + sling_x, uv2 * mouse_distance + sling_y)
-        pygame.draw.line(screen, (0, 0, 0), (sling2_x, sling2_y), pu3, 5)
-        screen.blit(redbird, (x_redbird, y_redbird))
-        pygame.draw.line(screen, (0, 0, 0), (sling_x, sling_y), pu3, 5)
-    # Angle of impulse
-    dy = y_mouse - sling_y
-    dx = x_mouse - sling_x
-    if dx == 0:
-        dx = 0.00000000000001
-    angle = math.atan((float(dy)) / dx)
-
-
 def load_music():
     s = 'data/angry-birds.ogg'
     pygame.mixer.music.load(s)
@@ -77,27 +41,67 @@ def main():
     bg = pygame.transform.scale(bg, (width, height))
     clock = pygame.time.Clock()
 
+    surf = pygame.Surface((1200, 650))
+
+    space1 = pymunk.Space()
+    space1.gravity = 0, 1000
+    space1.sleep_time_threshold = 0.5
+
+    draw_options1 = pymunk.pygame_util.DrawOptions(surf)
+
+    l = pymunk.Segment(space1.static_body, (0, 640), (1000, 640), 5)
+    l.elasticity = 0.5
+    l.friction = 1
+
+    space1.add(l)
+
+    template_box = pymunk.Poly.create_box(pymunk.Body(), (20, 20))
+    template_box.mass = 1
+    template_box.friction = 1
+
+    # ball.color = load_image("data/red-bird2.png")
+
+    for x in range(10):
+        for y in range(5):
+            box = template_box.copy()
+
+            box.body.position = 500 + x * 30, 600 - y * 20
+
+            space1.add(box, box.body)
+
     all_sprites = pygame.sprite.Group()
 
     x = Catapult(screen, all_sprites)
-    bird = Bird(screen, all_sprites)
-    #mouse = Mouse()
-   # objects = [bird, mouse]
+    # bird = Bird(screen, all_sprites)
+    # mouse = Mouse()
+    # objects = [bird, mouse]
     running = True
 
-    load_music()
+    # load_music()
 
+    x = Bird(screen, space1, 50, 1, 210, 435, all_sprites)
     while running:
-        screen.blit(bg, (0, 0))
+
         for event in pygame.event.get():
 
             all_sprites.update(event)
             if event.type == pygame.QUIT:
                 running = False
-            else:
+            if event.type == pygame.MOUSEBUTTONUP:
                 pass
 
         clock.tick(60)
+
+        surf.blit(bg, (0, 0))
+
+        space1.debug_draw(draw_options1)
+        screen.blit(surf, (0, 0))
+
+        ### Update physics
+        fps = 60
+        dt = 1.0 / fps
+        space1.step(dt)
+
         all_sprites.draw(screen)
         all_sprites.update()
         pygame.display.flip()
