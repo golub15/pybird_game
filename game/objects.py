@@ -25,6 +25,8 @@ class Catapult(pygame.sprite.Sprite):
         self.rect.x = 200
         self.rect.y = 435
 
+        self.state = 0
+
         self.bx, self.by = 0, 0
 
     def draw(self, *args):
@@ -38,18 +40,28 @@ class Catapult(pygame.sprite.Sprite):
             if event.type == pygame.MOUSEMOTION:
                 pass
 
-            elif event.type == pygame.USEREVENT:
-                self.bx, self.by = event.attr1
-                print(event)
+            elif event.type == 40001 or event.type == 40002:
+                self.bx, self.by = event.args
+                print(event.args)
+            elif event.type == 40003:
+                self.state = 1
 
-        pygame.draw.line(self.screen, '#000000', (self.rect.x + 5, self.rect.y + 10), (self.bx, self.by), 5)
-        pygame.draw.line(self.screen, '#000000', (self.rect.x + 55, self.rect.y + 10), (self.bx + 20, self.by), 5)
+        if self.state == 0:
+            pygame.draw.line(self.screen, '#000000', (self.rect.x + 5, self.rect.y + 10), (self.bx + 20, self.by + 30),
+                             5)
+            pygame.draw.line(self.screen, '#000000', (self.rect.x + 55, self.rect.y + 10), (self.bx + 40, self.by + 30),
+                             5)
+        elif self.state == 1:
+            pygame.draw.line(self.screen, '#000000', (self.rect.x + 5, self.rect.y + 20),
+                             (self.rect.x + 70, self.rect.y + 20),
+                             5)
 
 
 class Bird(pygame.sprite.Sprite):
     def __init__(self, screen, space, distance, angle, x, y, *group):
         super().__init__(*group)
 
+        self.birdid = 1
         self.image = load_image("data/red-bird2.png")
         self.rect = self.image.get_rect()
         self.mouse_on_click = False
@@ -65,73 +77,91 @@ class Bird(pygame.sprite.Sprite):
 
         self.space = space
 
-    def make_projectile(self):
-        pass
+        self.state = 1
+
+        self.send_event(self.state, (self.rect.x, self.rect.y))
+
+    def send_event(self, n, attr):
+
+        e = pygame.event.Event(40000 + n, birdid=self.birdid, args=attr)
+        pygame.event.post(e)
 
     def ballistik(self, distance, angle):
-        mass = 10
-        radius = 12
-        inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
-        body = pymunk.Body(mass, inertia)
-       # body.friction = 100000000
-        body.position = self.rect.x + self.image.get_width() // 2, self.rect.y + self.image.get_height() // 2
-        power = distance * 1.9
-        impulse = power * Vec2d(1, 0)
-        angle = -angle
-        body.apply_impulse_at_local_point(impulse.rotated(angle))
+        if self.state == 2:
+            self.state = 3
+            self.send_event(self.state, ())
 
-        shape = pymunk.Circle(body, radius, (0, 0))
-        shape.elasticity = 0.95
-        shape.friction = 10
-        shape.collision_type = 1
+            mass = 10
+            radius = 12
+            inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
+            body = pymunk.Body(mass, inertia)
+            # body.friction = 100000000
+            body.position = self.rect.x + self.image.get_width() // 2, self.rect.y + self.image.get_height() // 2
+            power = distance * 1.2
 
+            impulse = power * Vec2d(1, 0)
+            angle = -angle
+            body.apply_impulse_at_local_point(impulse.rotated(angle))
 
-        self.body = body
-        self.shape = shape
+            shape = pymunk.Circle(body, radius, (0, 0))
+            shape.elasticity = 0.95
+            shape.friction = 10
+            shape.collision_type = 2
 
+            self.body = body
+            self.shape = shape
 
-
-        self.space.add(self.body, self.shape)
+            self.space.add(self.body, self.shape)
 
     def update(self, *args):
 
         if args:
             event = args[0]
-            """if event.type == pygame.MOUSEBUTTONDOWN:
-                mx, my = event.pos
-                d = math.sqrt((self.rect.x - mx) ** 2 + (self.rect.y - my) ** 2)
-                if d < 20:
-                    print('JOK')
-                    self.make_projectile()"""
-            if event.type == pygame.MOUSEBUTTONDOWN and \
-                    (event.pos[0] - self.nach_coord[0] - self.image.get_width() / 2) ** 2 + \
-                    (event.pos[1] - self.nach_coord[1] - self.image.get_height() / 2) ** 2 \
-                    <= self.image.get_width() ** 2 / 4:
-                self.mouse_on_click = True
-            elif event.type == pygame.MOUSEBUTTONUP:
-                self.mouse_on_click = False
-                d = (self.rect.x - self.nach_coord[0]) ** 2 + (
-                        self.rect.y - self.nach_coord[1]) ** 2
 
-                if d <= self.little_radius ** 2:
-                    self.rect.x = self.nach_coord[0]
-                    self.rect.y = self.nach_coord[1]
-                else:
-                    self.ballistik(d, math.pi * 3 / 2 - get_ungle(self.rect.x, self.rect.y, *self.nach_coord))
+            if 1 <= self.state <= 2:
+                if event.type == pygame.MOUSEBUTTONDOWN and \
+                        (event.pos[0] - self.nach_coord[0] - self.image.get_width() / 2) ** 2 + \
+                        (event.pos[1] - self.nach_coord[1] - self.image.get_height() / 2) ** 2 \
+                        <= self.image.get_width() ** 2 / 4:
+                    self.mouse_on_click = True
 
-            if event.type == pygame.MOUSEMOTION and self.mouse_on_click:
-                mouse_x, mouse_y = event.pos[0] - self.image.get_width() / 2, event.pos[1] - self.image.get_height() / 2
-                if event.pos != self.nach_coord:
-                    if (mouse_x - self.nach_coord[0]) ** 2 + (mouse_y - self.nach_coord[1]) ** 2 <= self.radius ** 2:
-                        self.rect.x = mouse_x
-                        self.rect.y = mouse_y
+                    self.state = 2
+                    self.send_event(self.state, (self.rect.x, self.rect.y))
+
+
+
+
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    self.mouse_on_click = False
+                    d = (self.rect.x - self.nach_coord[0]) ** 2 + (
+                            self.rect.y - self.nach_coord[1]) ** 2
+
+                    if d <= self.little_radius ** 2:
+
+                        self.rect.x = self.nach_coord[0]
+                        self.rect.y = self.nach_coord[1]
+
+                        self.state = 1
+                        self.send_event(self.state, (self.rect.x, self.rect.y))
                     else:
-                        ungle = get_ungle(mouse_x, mouse_y, *self.nach_coord) % (math.pi * 2)
-                        self.rect.x = self.nach_coord[0] + math.sin(ungle) * self.radius
-                        self.rect.y = self.nach_coord[1] - math.cos(ungle) * self.radius
-                    self.now_speed = ((self.rect.x - self.nach_coord[0]) ** 2
-                                      + (self.rect.y - self.nach_coord[1]) ** 2) ** 0.5
-            # self.make_projectile()
+                        self.ballistik(d, math.pi * 3 / 2 - get_ungle(self.rect.x, self.rect.y, *self.nach_coord))
+
+                if event.type == pygame.MOUSEMOTION and self.mouse_on_click:
+
+                    mouse_x, mouse_y = event.pos[0] - self.image.get_width() / 2, event.pos[
+                        1] - self.image.get_height() / 2
+                    if event.pos != self.nach_coord:
+                        if (mouse_x - self.nach_coord[0]) ** 2 + (
+                                mouse_y - self.nach_coord[1]) ** 2 <= self.radius ** 2:
+                            self.rect.x = mouse_x
+                            self.rect.y = mouse_y
+                        else:
+                            ungle = get_ungle(mouse_x, mouse_y, *self.nach_coord) % (math.pi * 2)
+                            self.rect.x = self.nach_coord[0] + math.sin(ungle) * self.radius
+                            self.rect.y = self.nach_coord[1] - math.cos(ungle) * self.radius
+                        self.now_speed = ((self.rect.x - self.nach_coord[0]) ** 2
+                                          + (self.rect.y - self.nach_coord[1]) ** 2) ** 0.5
+                    self.send_event(self.state, (self.rect.x, self.rect.y))
 
         def to_pygame(p):
 
