@@ -7,6 +7,7 @@ import pymunk.pygame_util
 
 from pymunk import Vec2d
 
+CATAPULT_EVENT = 40000
 
 def vector(p0, p1):
     """Return the vector of the points
@@ -45,15 +46,32 @@ def main():
 
     space1 = pymunk.Space()
     space1.gravity = 0, 1000
-    space1.sleep_time_threshold = 0.5
+    space1.sleep_time_threshold = 0.00001
 
     draw_options1 = pymunk.pygame_util.DrawOptions(surf)
 
-    l = pymunk.Segment(space1.static_body, (0, 640), (1000, 640), 5)
-    l.elasticity = 0.5
+    l = pymunk.Segment(space1.static_body, (0, 640), (2000, 640), 10)
+    l.elasticity = 1
     l.friction = 1
 
+    F = pymunk.Segment(space1.static_body, (1200, 0), (1200, 640), 10)
+    F.elasticity = 1
+    F.friction = 1
+
+    F1 = pymunk.Segment(space1.static_body, (0, 0), (0, 640), 10)
+    F1.elasticity = 1
+    F1.friction = 1
+
+
+    F2 = pymunk.Segment(space1.static_body, (0, 0), (1200, 0), 10)
+    F2.elasticity = 1
+    F2.friction = 1
+
     space1.add(l)
+    space1.add(F)
+    space1.add(F1)
+    space1.add(F2)
+
 
     template_box = pymunk.Poly.create_box(pymunk.Body(), (20, 20))
     template_box.mass = 1
@@ -61,13 +79,6 @@ def main():
 
     # ball.color = load_image("data/red-bird2.png")
 
-    for x in range(10):
-        for y in range(5):
-            box = template_box.copy()
-
-            box.body.position = 500 + x * 30, 600 - y * 20
-
-            space1.add(box, box.body)
 
     all_sprites = pygame.sprite.Group()
 
@@ -77,7 +88,7 @@ def main():
     # objects = [bird, mouse]
     running = True
 
-    # load_music()
+    load_music()
 
     x = Bird(screen, space1, 50, 1, 210, 435, all_sprites)
     while running:
