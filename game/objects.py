@@ -19,12 +19,12 @@ class Catapult(pygame.sprite.Sprite):
 
         img = load_image("data/sling.png")
         self.image = img
-        #
+        self.id = 20000
 
         # self.image = pygame.transform.scale(, (40, 40))
         self.screen = screen
         self.rect = self.image.get_rect()
-        self.rect.x = 200
+        self.rect.x = 300
         self.rect.y = 435
 
         self.state = 0
@@ -36,7 +36,6 @@ class Catapult(pygame.sprite.Sprite):
         print('pass')
 
     def update(self, *args):
-
         if args:
             event = args[0]
             if event.type == pygame.MOUSEMOTION:
@@ -45,11 +44,19 @@ class Catapult(pygame.sprite.Sprite):
             if hasattr(event, "birdid"):
                 bid = event.birdid
 
+                if event.type == bid - 1:  # собыите о рождении птички
+                    # отпрровляем  кординаты рогатки
+
+                    e = pygame.event.Event(self.id, catapult=1, args=(self.rect.x, self.rect.y))
+                    pygame.event.post(e)
+
                 if event.type == bid + 1 or event.type == bid + 2:
                     self.bx, self.by = event.args
                     self.state = 1
                 elif event.type == bid + 3:
                     self.state = 0
+
+
 
         if self.state == 1:
             pygame.draw.line(self.screen, '#000000', (self.rect.x + 5, self.rect.y + 10), (self.bx + 20, self.by + 30),
@@ -69,6 +76,8 @@ class Bird(pygame.sprite.Sprite):
         self.screen = screen
         self.spites = group[0]
         self.trails = []
+        self.catapult_cord = (0, 0)
+
         self.trail_color = (randint(0, 255), randint(0, 255), randint(0, 255))
 
         self.bird_id = id
@@ -90,11 +99,12 @@ class Bird(pygame.sprite.Sprite):
 
         self.space = space
         self.state = st
-        self.send_event(self.state, (self.rect.x, self.rect.y))
+
+        self.send_event(-1, ())  # собыите о рождении птички
 
         pygame.time.set_timer(self.bird_id + 9, 3000)
 
-        h = self.space.add_collision_handler(12, self.bird_id)
+        h = self.space.add_collision_handler(12, self.bird_id)  # обработка столкновения с консрукиий
         h.begin = self.bird_on_collision
 
     def bird_on_collision(self, space, arbiter, arg):
@@ -104,7 +114,8 @@ class Bird(pygame.sprite.Sprite):
             self.send_event(self.state, (self.rect.x, self.rect.y))
             pygame.time.set_timer(self.bird_id + 10, 0)
 
-            x = Bird(self.screen, self.space, 1, self.bird_id + 20, 205, 435, self.spites)
+            x = Bird(self.screen, self.space, 1, self.bird_id + 20, self.catapult_cord[0], self.catapult_cord[1],
+                     self.spites)
 
         return True
 
@@ -133,7 +144,7 @@ class Bird(pygame.sprite.Sprite):
             body.apply_impulse_at_local_point(impulse.rotated(angle))
 
             shape = pymunk.Circle(body, radius, (0, 0))
-            shape.elasticity = 0.8
+            shape.elasticity = 0.3
             shape.friction = 1
             shape.collision_type = self.bird_id
 
@@ -146,6 +157,15 @@ class Bird(pygame.sprite.Sprite):
 
         if args:
             event = args[0]
+
+            if hasattr(event, "catapult"):  # событие от катапульты
+                self.catapult_cord = event.args
+
+                if self.state == 1:
+                    self.rect.x = self.catapult_cord[0]
+                    self.rect.y = self.catapult_cord[1]
+                    self.nach_coord = self.catapult_cord
+                    self.send_event(self.state, (self.rect.x, self.rect.y))
 
             if event.type == self.bird_id + 10:
                 self.trails.append(
@@ -208,6 +228,12 @@ class Bird(pygame.sprite.Sprite):
 
         def to_pygame(p):
             return int(p.x), int(p.y)
+
+
+
+        if self.state == 0:
+            self.rect = self.rect.move(0,
+                                       -1)
 
         for x, y in self.trails:
             pygame.draw.circle(self.screen, self.trail_color, (x, y), 5)

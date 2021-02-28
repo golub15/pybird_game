@@ -4,6 +4,7 @@ from game.utils import *
 import pymunk
 import pygame
 import pymunk.pygame_util
+from random import randint
 
 from pymunk import Vec2d
 
@@ -61,7 +62,6 @@ def main():
     F.friction = 1
     F.collision_type = 12
 
-
     F1 = pymunk.Segment(space1.static_body, (0, 0), (0, 640), 10)
     F1.elasticity = 1
     F1.friction = 10
@@ -81,6 +81,35 @@ def main():
     template_box.mass = 1
     template_box.friction = 1
 
+    # for x in range(10):
+    # for y in range(20):
+    # box = template_box.copy()
+    # box.body.position = 800 + x * 30, 640 - y * 20
+    # space1.add(box, box.body)
+
+    x = Vec2d(270, 7.5) + (800, 650)
+    y = Vec2d(0, 0)
+    deltaX = Vec2d(-0.5625, -1.1) * 20
+    deltaY = Vec2d(-1.125, -0.0) * 20
+    ttt = randint(5, 20)
+    for i in range(ttt):
+        y = Vec2d(*x)
+        for j in range(i, ttt):
+            size = 10
+            points = [(-size, -size), (-size, size), (size, size), (size, -size)]
+            mass = 1.0
+            moment = pymunk.moment_for_poly(mass, points, (0, 0))
+            body = pymunk.Body(mass, moment)
+            body.position = y
+            shape = pymunk.Poly(body, points)
+            shape.friction = 1
+            shape.collision_type = 12
+            space1.add(body, shape)
+
+            y += deltaY
+
+        x += deltaX
+
     # ball.color = load_image("data/red-bird2.png")
 
     all_sprites = pygame.sprite.Group()
@@ -93,7 +122,7 @@ def main():
 
     # load_music()
 
-    x = Bird(surf, space1, 1, 40000, 205, 435, all_sprites)
+    x = Bird(surf, space1, 1, 40000, 100, 580, all_sprites)
     while running:
 
         for event in pygame.event.get():
@@ -106,8 +135,6 @@ def main():
 
                 pass
 
-
-
         surf.blit(bg, (0, 0))
         space1.debug_draw(draw_options1)
 
@@ -116,13 +143,12 @@ def main():
         dt = 1 / fps
         space1.step(dt)
 
-
-
         all_sprites.draw(surf)
         all_sprites.update()
 
         screen.blit(pygame.transform.scale(surf, (1200, 640)), (0, 0))
 
+        pygame.display.set_caption("fps: " + str(clock.get_fps()))
         pygame.display.flip()
         clock.tick(fps)
 
