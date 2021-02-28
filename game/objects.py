@@ -7,6 +7,8 @@ import pymunk.pygame_util
 import math
 from pymunk import Vec2d
 
+from random import randint
+
 
 class Catapult(pygame.sprite.Sprite):
 
@@ -40,29 +42,40 @@ class Catapult(pygame.sprite.Sprite):
             if event.type == pygame.MOUSEMOTION:
                 pass
 
-            elif event.type == 40001 or event.type == 40002:
-                self.bx, self.by = event.args
-                print(event.args)
-            elif event.type == 40003:
-                self.state = 1
+            if hasattr(event, "birdid"):
+                bid = event.birdid
 
-        if self.state == 0:
+                if event.type == bid + 1 or event.type == bid + 2:
+                    self.bx, self.by = event.args
+                    self.state = 1
+                elif event.type == bid + 3:
+                    self.state = 0
+
+        if self.state == 1:
             pygame.draw.line(self.screen, '#000000', (self.rect.x + 5, self.rect.y + 10), (self.bx + 20, self.by + 30),
                              5)
             pygame.draw.line(self.screen, '#000000', (self.rect.x + 55, self.rect.y + 10), (self.bx + 40, self.by + 30),
                              5)
-        elif self.state == 1:
+        elif self.state == 0:
             pygame.draw.line(self.screen, '#000000', (self.rect.x + 5, self.rect.y + 20),
                              (self.rect.x + 70, self.rect.y + 20),
                              5)
 
 
 class Bird(pygame.sprite.Sprite):
-    def __init__(self, screen, space, distance, angle, x, y, *group):
+    def __init__(self, screen, space, st, id, x, y, *group):
         super().__init__(*group)
 
-        self.birdid = 1
-        self.image = load_image("data/red-bird2.png")
+        self.screen = screen
+        self.spites = group[0]
+        self.trails = []
+        self.trail_color = (randint(0, 255), randint(0, 255), randint(0, 255))
+
+        self.bird_id = id
+        self.img1 = load_image("data/red-bird2.png")
+        self.img2 = load_image("data/red-bird21.png")
+
+        self.image = self.img1
         self.rect = self.image.get_rect()
         self.mouse_on_click = False
         self.nach_coord = x, y
@@ -76,14 +89,28 @@ class Bird(pygame.sprite.Sprite):
         self.shape = None
 
         self.space = space
-
-        self.state = 1
-
+        self.state = st
         self.send_event(self.state, (self.rect.x, self.rect.y))
+
+        pygame.time.set_timer(self.bird_id + 9, 3000)
+
+        h = self.space.add_collision_handler(12, self.bird_id)
+        h.begin = self.bird_on_collision
+
+    def bird_on_collision(self, space, arbiter, arg):
+
+        if self.state != 4:
+            self.state = 4
+            self.send_event(self.state, (self.rect.x, self.rect.y))
+            pygame.time.set_timer(self.bird_id + 10, 0)
+
+            x = Bird(self.screen, self.space, 1, self.bird_id + 20, 205, 435, self.spites)
+
+        return True
 
     def send_event(self, n, attr):
 
-        e = pygame.event.Event(40000 + n, birdid=self.birdid, args=attr)
+        e = pygame.event.Event(self.bird_id + n, birdid=self.bird_id, args=attr)
         pygame.event.post(e)
 
     def ballistik(self, distance, angle):
@@ -91,11 +118,13 @@ class Bird(pygame.sprite.Sprite):
             self.state = 3
             self.send_event(self.state, ())
 
+            pygame.time.set_timer(self.bird_id + 10, 100)
+
             mass = 10
-            radius = 12
+            radius = 10
             inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
             body = pymunk.Body(mass, inertia)
-            # body.friction = 100000000
+            body.friction = 10
             body.position = self.rect.x + self.image.get_width() // 2, self.rect.y + self.image.get_height() // 2
             power = distance * 1.2
 
@@ -104,9 +133,9 @@ class Bird(pygame.sprite.Sprite):
             body.apply_impulse_at_local_point(impulse.rotated(angle))
 
             shape = pymunk.Circle(body, radius, (0, 0))
-            shape.elasticity = 0.95
-            shape.friction = 10
-            shape.collision_type = 2
+            shape.elasticity = 0.8
+            shape.friction = 1
+            shape.collision_type = self.bird_id
 
             self.body = body
             self.shape = shape
@@ -117,6 +146,20 @@ class Bird(pygame.sprite.Sprite):
 
         if args:
             event = args[0]
+
+            if event.type == self.bird_id + 10:
+                self.trails.append(
+                    (self.rect.x + self.image.get_width() // 2, self.rect.y + self.image.get_height() // 2))
+
+            if (event.type == self.bird_id + 9 or event.type == self.bird_id + 8):
+                pygame.time.set_timer(self.bird_id + 8, 0)
+
+                if self.image == self.img1:
+                    self.image = self.img2
+                    pygame.time.set_timer(self.bird_id + 8, 500)
+                else:
+
+                    self.image = self.img1
 
             if 1 <= self.state <= 2:
                 if event.type == pygame.MOUSEBUTTONDOWN and \
@@ -164,20 +207,21 @@ class Bird(pygame.sprite.Sprite):
                     self.send_event(self.state, (self.rect.x, self.rect.y))
 
         def to_pygame(p):
-
             return int(p.x), int(p.y)
 
-        for s in self.space.shapes:
-            if isinstance(s, pymunk.Circle) and s.body != None:
-                p = to_pygame(s.body.position)
-                x, y = p
+        for x, y in self.trails:
+            pygame.draw.circle(self.screen, self.trail_color, (x, y), 5)
 
-                x -= 30
-                y -= 30
-                print(x, y)
+            for s in self.space.shapes:
+                if isinstance(s, pymunk.Circle) and s.body != None and s.collision_type == self.bird_id:
+                    p = to_pygame(s.body.position)
+                    x, y = p
 
-                self.rect.x = x
-                self.rect.y = y
+                    x -= 30
+                    y -= 30
+
+                    self.rect.x = x
+                    self.rect.y = y
 
 
 class Mouse:
