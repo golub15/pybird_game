@@ -27,7 +27,7 @@ def unit_vector(v):
         h = 0.000000000000001
     ua = v[0] / h
     ub = v[1] / h
-    return (ua, ub)
+    return ua, ub
 
 
 def load_music():
@@ -86,6 +86,7 @@ def main():
     # box = template_box.copy()
     # box.body.position = 800 + x * 30, 640 - y * 20
     # space1.add(box, box.body)
+
 
     x = Vec2d(270, 7.5) + (800, 650)
     y = Vec2d(0, 0)

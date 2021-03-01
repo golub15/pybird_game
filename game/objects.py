@@ -1,4 +1,4 @@
-import game.prob
+import game. prob
 from game.utils import *
 
 import pygame
