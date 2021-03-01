@@ -120,9 +120,13 @@ def main():
     # objects = [bird, mouse]
     running = True
 
-    # load_music()
+    load_music()
 
-    x = Bird(surf, space1, 1, 40000, 100, 580, all_sprites)
+    br1 = Bird(surf, space1, 0, 40000, 4, 50, 580, all_sprites)
+    br2 = Bird(surf, space1, 0, 40020, 3, 100, 580, all_sprites)
+    br3 = Bird(surf, space1, 0, 40040, 2, 150, 580, all_sprites)
+    br4 = Bird(surf, space1, 1, 40060, 1, 200, 580, all_sprites)
+
     while running:
 
         for event in pygame.event.get():
@@ -144,7 +148,7 @@ def main():
         space1.step(dt)
 
         all_sprites.draw(surf)
-        all_sprites.update()
+        all_sprites.update(clock)
 
         screen.blit(pygame.transform.scale(surf, (1200, 640)), (0, 0))
 

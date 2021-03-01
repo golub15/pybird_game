@@ -24,7 +24,7 @@ class Catapult(pygame.sprite.Sprite):
         # self.image = pygame.transform.scale(, (40, 40))
         self.screen = screen
         self.rect = self.image.get_rect()
-        self.rect.x = 300
+        self.rect.x = 200
         self.rect.y = 435
 
         self.state = 0
@@ -36,8 +36,9 @@ class Catapult(pygame.sprite.Sprite):
         print('pass')
 
     def update(self, *args):
-        if args:
+        if args and type(args[0]) == type(pygame.event.Event(0)):
             event = args[0]
+
             if event.type == pygame.MOUSEMOTION:
                 pass
 
@@ -56,8 +57,6 @@ class Catapult(pygame.sprite.Sprite):
                 elif event.type == bid + 3:
                     self.state = 0
 
-
-
         if self.state == 1:
             pygame.draw.line(self.screen, '#000000', (self.rect.x + 5, self.rect.y + 10), (self.bx + 20, self.by + 30),
                              5)
@@ -70,7 +69,7 @@ class Catapult(pygame.sprite.Sprite):
 
 
 class Bird(pygame.sprite.Sprite):
-    def __init__(self, screen, space, st, id, x, y, *group):
+    def __init__(self, screen, space, st, id, count, x, y, *group):
         super().__init__(*group)
 
         self.screen = screen
@@ -79,8 +78,11 @@ class Bird(pygame.sprite.Sprite):
         self.catapult_cord = (0, 0)
 
         self.trail_color = (randint(0, 255), randint(0, 255), randint(0, 255))
+        self.trail_color = (255, 255, 255)
 
         self.bird_id = id
+        self.bird_count = count
+
         self.img1 = load_image("data/red-bird2.png")
         self.img2 = load_image("data/red-bird21.png")
 
@@ -93,6 +95,9 @@ class Bird(pygame.sprite.Sprite):
         self.rect.y = y
         self.radius = 100
         self.little_radius = 40
+
+        self.svx = randint(20, 30)
+        self.sdt = 0
 
         self.body = None
         self.shape = None
@@ -114,8 +119,10 @@ class Bird(pygame.sprite.Sprite):
             self.send_event(self.state, (self.rect.x, self.rect.y))
             pygame.time.set_timer(self.bird_id + 10, 0)
 
-            x = Bird(self.screen, self.space, 1, self.bird_id + 20, self.catapult_cord[0], self.catapult_cord[1],
-                     self.spites)
+            #x = Bird(self.screen, self.space, 1, self.bird_id + 20, self.catapult_cord[0], self.catapult_cord[1],
+             #        self.spites)
+            e = pygame.event.Event(self.bird_id + 12, bird_next=self.bird_count + 1)
+            pygame.event.post(e)
 
         return True
 
@@ -129,7 +136,7 @@ class Bird(pygame.sprite.Sprite):
             self.state = 3
             self.send_event(self.state, ())
 
-            pygame.time.set_timer(self.bird_id + 10, 100)
+            pygame.time.set_timer(self.bird_id + 10, 50)
 
             mass = 10
             radius = 10
@@ -155,7 +162,22 @@ class Bird(pygame.sprite.Sprite):
 
     def update(self, *args):
 
-        if args:
+        if args and type(args[0]) == type(pygame.time.Clock()):
+            # pygame.time.Clock.
+            self.sdt += 1.5 / 60
+
+            if self.state == 0:
+
+                self.rect.y -= (self.svx * self.sdt - ((100 * self.sdt ** 2) / 2))
+                if self.rect.y > 580:
+                    self.sdt = 0
+
+            # print(self.sdt)
+
+
+
+
+        if args and type(args[0]) == type(pygame.event.Event(0)):
             event = args[0]
 
             if hasattr(event, "catapult"):  # событие от катапульты
@@ -167,18 +189,31 @@ class Bird(pygame.sprite.Sprite):
                     self.nach_coord = self.catapult_cord
                     self.send_event(self.state, (self.rect.x, self.rect.y))
 
-            if event.type == self.bird_id + 10:
-                self.trails.append(
-                    (self.rect.x + self.image.get_width() // 2, self.rect.y + self.image.get_height() // 2))
+            def dd(x1, x2, y1, y2):
+                return math.sqrt(((x2 - x1) ** 2) + ((y2 - y1) ** 2))
 
-            if (event.type == self.bird_id + 9 or event.type == self.bird_id + 8):
+            if hasattr(event, "bird_next"):  # событие от катапульты
+                if event.bird_next == self.bird_count:
+                    if self.state == 0:
+                        self.state = 1
+                        self.rect.x = self.catapult_cord[0]
+                        self.rect.y = self.catapult_cord[1]
+                        self.nach_coord = self.catapult_cord
+                        self.send_event(self.state, (self.rect.x, self.rect.y))
+
+
+            if event.type == self.bird_id + 10:
+                if dd(self.rect.x, self.catapult_cord[0], self.rect.y, self.catapult_cord[1]) > 50:
+                    self.trails.append(
+                        (self.rect.x + self.image.get_width() // 2, self.rect.y + self.image.get_height() // 2))
+
+            if event.type == self.bird_id + 9 or event.type == self.bird_id + 8:
                 pygame.time.set_timer(self.bird_id + 8, 0)
 
                 if self.image == self.img1:
                     self.image = self.img2
                     pygame.time.set_timer(self.bird_id + 8, 500)
                 else:
-
                     self.image = self.img1
 
             if 1 <= self.state <= 2:
@@ -229,25 +264,19 @@ class Bird(pygame.sprite.Sprite):
         def to_pygame(p):
             return int(p.x), int(p.y)
 
-
-
-        if self.state == 0:
-            self.rect = self.rect.move(0,
-                                       -1)
-
         for x, y in self.trails:
             pygame.draw.circle(self.screen, self.trail_color, (x, y), 5)
 
-            for s in self.space.shapes:
-                if isinstance(s, pymunk.Circle) and s.body != None and s.collision_type == self.bird_id:
-                    p = to_pygame(s.body.position)
-                    x, y = p
+        for s in self.space.shapes:
+            if isinstance(s, pymunk.Circle) and s.body != None and s.collision_type == self.bird_id:
+                p = to_pygame(s.body.position)
+                x, y = p
 
-                    x -= 30
-                    y -= 30
+                x -= 30
+                y -= 30
 
-                    self.rect.x = x
-                    self.rect.y = y
+                self.rect.x = x
+                self.rect.y = y
 
 
 class Mouse:
